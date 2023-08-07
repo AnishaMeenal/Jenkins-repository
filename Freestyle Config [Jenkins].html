@@ -1,26 +1,39 @@
 #!/bin/bash
 
-AZURE_SUBSCRIPTION_ID="59d4b284-9e83-4c97-9874-81c6f29c3b39"
-AZURE_RESOURCE_GROUP="NetworkWatcherRG"
-AZURE_LOCATION="East Asia"
-Azure_vm_name="Jemi"
-AZURE_VM_SIZE="Standard_B1s"
+# Define variables
+resource_group="Resource"
+location="East US"
+vm_name="myVM"
+admin_user="anisha"
+admin_password="P@ssword@123"
 
-az group create --name $AZURE_RESOURCE_GROUP --location $AZURE_LOCATION
+# Create a resource group
+az group create --name $resource_group --location $location
 
+# Create a virtual machine
 az vm create \
---name $AZURE_VM_NAME \
---resource_group $AZURE_RESOURCE_GROUP \
---image UbuntuLTS \
---size $AZURE_VM_SIZE \
---admin-username azureuser \
---generate-ssh-keys
+    --resource-group $resource_group \
+    --name $vm_name \
+    --image UbuntuLTS \
+    --admin-username $admin_user \
+    --admin-password $admin_password
 
-az vm open-port --resource-group $AZURE_RESOURCE_GROUP --name $AZURE_VM_NAME --port 80 --priority 1010
+# Open port 80 for Apache
+az vm open-port --port 80 --resource-group $resource_group --name $vm_name
 
-az vm extension set \
---resource-group $AZURE_RESOURCE_GROUP \
---vm-name $AZURE_VM_NAME \
---name customScript \
---publisher Microsoft.Azure.Extensions \
---settings '{"command to execute":"apt-get update && apt-get install -y apache2"}'
+# Install Apache on the VM
+az vm run-command invoke -g $resource_group -n $vm_name --command-id RunShellScript --scripts \
+    "sudo apt-get update -y && sudo apt-get install apache2 -y"
+
+# Create a simple HTML page with metrics
+echo "<html><body><h1>Server Metrics</h1><p>$(date)</p></body></html>" > metrics.html
+
+# Copy the HTML page to the VM
+az vm copy-files --source ./metrics.html --destination /var/www/html/ --resource-group $resource_group --destination-path /var/www/html/
+
+# Print VM information
+echo "VM IP Address:"
+az vm show -d -g $resource_group -n $vm_name --query publicIps --output tsv
+
+echo "Access the metrics page:"
+echo "http://$(az vm show -d -g $resource_group -n $vm_name --query publicIps --output tsv)/metrics.html"
