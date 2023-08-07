@@ -1,1 +1,26 @@
+#!/bin/bash
 
+AZURE_SUBSCRIPTION_ID="59d4b284-9e83-4c97-9874-81c6f29c3b39"
+AZURE_RESOURCE_GROUP="NetworkWatcherRG"
+AZURE_LOCATION="East Asia"
+Azure_vm_name="Jemi"
+AZURE_VM_SIZE="Standard_B1s"
+
+az group create --name $AZURE_RESOURCE_GROUP --location $AZURE_LOCATION
+
+az vm create \
+--name $AZURE_VM_NAME \
+--resource_group $AZURE_RESOURCE_GROUP \
+--image UbuntuLTS \
+--size $AZURE_VM_SIZE \
+--admin-username azureuser \
+--generate-ssh-keys
+
+az vm open-port --resource-group $AZURE_RESOURCE_GROUP --name $AZURE_VM_NAME --port 80 --priority 1010
+
+az vm extension set \
+--resource-group $AZURE_RESOURCE_GROUP \
+--vm-name $AZURE_VM_NAME \
+--name customScript \
+--publisher Microsoft.Azure.Extensions \
+--settings '{"command to execute":"apt-get update && apt-get install -y apache2"}'
